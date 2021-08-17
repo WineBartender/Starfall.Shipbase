@@ -1,0 +1,413 @@
+@name StarFall.0S Base
+@persist SeatShit LightShit Active On Pitch Yaw Roll TI Temp:array LookLock CurrentThrottle StartFix Aim1:ranger Aim2:vector GunToggle ThrusterColor:vector
+@persist ThrusterLength HyperdriveOn ThrusterAlpha PanelGunColor:vector PanelHDColor:vector HyperdriveCanJump WheelAngRoll WheelAngYaw WheelAngPitch BallAng 
+@persist 
+@inputs EGP1:wirelink Seat:entity Light:entity Gun1:entity Gun2:entity Core:entity
+@outputs LightOn CurrentThrottle ThrusterPitch ZeroTo512 Fire Health MaxHealth 
+@model models/props_lab/monitor02.mdl
+runOnTick(1)
+runOnChat(1)
+if (first()){ entity():soundPlay(10,2,"hl1/fvox/activated.wav")}
+
+#Config#
+Sensitivity = 65 
+AirFriction = 0.01 
+#Config#
+
+#The core must be in the middle of the ship, it has to be 1250 weight or higher for the E2 to work properly.
+
+Music = "https://www.dropbox.com/s/uy3eoqnrnfis37f/NOMA%20-%20Brain%20Power.mp3?dl=1"
+Start1 = "https://www.dropbox.com/s/1ll4gqj43mul9t1/BSTstart1%28Welcome%29.mp3?dl=1"
+HD1 = "https://www.dropbox.com/s/toz2etnp4hbxlbe/BSThd1%28Engaged%29.mp3?dl=1"
+HD2 = "https://www.dropbox.com/s/j993y0np3apvc2c/BSThd2%28Disengaged%29.mp3?dl=1"
+ZeroTo512 = 1
+LS1 = lastSaid():explode(" ")
+LS2 = owner():lastSaid():explode(" ")
+ChatClk1 = chatClk()
+ChatClk2 = chatClk(owner())
+streamDisable3D(1)
+streamRadius(0, 500)
+streamRadius(1, 500)
+
+Driver = Seat:driver()
+if(Driver){
+    Health = Driver:health()
+    MaxHealth = Driver:maxHealth()
+}
+MPH = toUnit("mph",Core:vel():length())
+
+W = Driver:keyPressed("s")
+S = Driver:keyPressed("w")
+A = Driver:keyPressed("a")
+D = Driver:keyPressed("d")
+RLeft = Driver:keyPressed("left")
+RRight = Driver:keyPressed("right")
+ThrottleUp = Driver:keyAttack1()
+ThrottleDown = Driver:keyAttack2()
+Look = Driver:keyPressed("lalt")
+Guns = Driver:keyPressed("r")
+Hyperdrive = Driver:keyPressed("g")
+Brakes = Driver:keyPressed("v")
+ResetRoll = Driver:keyPressed("n")
+Eject = Driver:keyPressed("e")
+F = Driver:keyPressed("f")
+T = (W-S)
+Y = (A-D)
+U = (ThrottleUp-ThrottleDown)
+O = (RLeft-RRight)
+IdleSound = "thrusters/rocket00.wav"
+ThrusterSound = "thrusters/jet03.wav"
+HyperDriveSound = "thrusters/rocket04.wav"
+
+ThrusterPitch = +((255 / 255) * (CurrentThrottle * 10))
+
+if(changed(EGP1) & EGP1){
+    timer("startfix", 5000)
+}
+if(clk("startfix")){
+    StartFix = 1 
+}
+
+if(CurrentThrottle > 0){
+    ThrottleBar = -clamp(((300 / 255) * (CurrentThrottle*10)), 1, 300)*StartFix
+}
+else{
+    ThrottleBar = -1
+}
+
+if(Health > 0){
+    HealthBar = -clamp(((200 / MaxHealth) * Health), 1, 200)*StartFix
+}
+else{
+    HealthBar = -1
+}
+
+if(CurrentThrottle > 0){
+    ThrusterLength = clamp(((50 / 255) * (CurrentThrottle*10)), 1, 50)*(Driver:keyPressed("lshift")+1)
+}
+else{
+    ThrusterLength = 1
+}
+
+if(LS1[1,string]==".music"&ChatClk1){
+    if(LS1[2,string]=="start"){
+        Seat:streamStart(0, Music, 0.5)
+    }
+    if(LS1[2,string]=="stop"){
+        streamStop(0)
+    }
+}
+
+if(changed(Driver) & Driver){
+    Seat:streamStart(1, Start1, 1)
+}
+
+if(Driver){
+    Active = 1
+}
+else{
+    Active = 0
+}
+
+if(changed(Seat) & Seat | first() & Seat){
+    soundStop(0)
+    SeatShit = 0
+    Seat:propGravity(0)
+    Seat:setMass(0)
+    noCollideAll(Seat, 1)
+    SeatShit = 1
+    Seat:soundPlay(0, inf(), IdleSound)
+    timer("seatsound2", 100)
+}
+
+if(clk("seatsound2")){
+    Seat:soundPlay(1, inf(), ThrusterSound)
+}
+
+if(changed(Light) & Light | first() & Light){
+    LightShit = 0
+    Light:propGravity(0)
+    Light:setMass(0)
+    Light:setAlpha(1)
+    noCollideAll(Light, 1)
+    LightShit = 1
+}
+
+if(changed(Gun1) & Gun1 | first() & Gun1){
+    Gun1:propGravity(0)
+    Gun1:setMass(0)
+    Gun1:createWire(Core,"Fire","Fire")
+    Gun1:setAlpha(0)
+    noCollideAll(Gun1, 1)
+}
+
+if(changed(Gun2) & Gun2 | first() & Gun2){
+    Gun2:propGravity(0)
+    Gun2:setMass(0)
+    Gun2:createWire(Core,"Fire","Fire")
+    Gun2:setAlpha(0)
+    noCollideAll(Gun2, 1)
+}
+
+EGP1:egpLine(1, vec2(400, 450), vec2(400, 450+ThrottleBar))
+EGP1:egpColor(1, vec(127, 0, 255))
+EGP1:egpSize(1, 25)
+
+EGP1:egpText(2, round((100 / 255) * (CurrentThrottle*10)):toString()+"%", vec2(400, 450+ThrottleBar-16))
+EGP1:egpColor(2, vec(127, 0, 255))
+EGP1:egpAlign(2, 1)
+
+EGP1:egpLine(13, vec2(450, 450), vec2(450, 450+HealthBar))
+EGP1:egpColor(13, vec(127, 0, 255))
+EGP1:egpSize(13, 25)
+
+EGP1:egpText(14, round((100 / MaxHealth) * Health):toString()+"%", vec2(450, 450+HealthBar-16))
+EGP1:egpColor(14, vec(127, 0, 255))
+EGP1:egpAlign(14, 1)
+
+
+timer("start2", 1000)
+
+timer("start3", 1000)
+
+
+if(clk("start3")){
+
+}
+
+Eye = Seat:toLocalAxis(Driver:eye())
+
+rangerHitEntities(1)
+rangerFilter(array(Core))
+rangerHitWater(1)
+Aim1 = rangerOffset(999999, Core:massCenter(), -(Core:up()))
+if(Aim1:hit()){
+    Aim2 = Aim1:position()
+}
+Height = rangerOffset(99999, Core:massCenter(), vec(0, 0, -1)):distance()
+
+if(Active == 1){
+On = 1
+BallAng = -53.5
+if(On == 1){
+    ETargetQuat = quat(ang(Roll,Yaw,Pitch))
+    ECurrentQuat = quat(Core)
+    EDiffQuat = ETargetQuat/ECurrentQuat
+    ETorque = Core:toLocal(rotationVector(EDiffQuat)+Core:pos())
+    Core:applyTorque((ETorque * Sensitivity - Core:angVelVector() * 20) * Core:inertia())
+    Core:applyForce(-Core:vel()*Core:mass()*AirFriction)
+    Core:propGravity(0)
+    
+    if(T & W){
+        Pitch += 0.5
+        WheelAngPitch = -15
+    }
+    elseif(T & S){
+        Pitch -= 0.5
+        WheelAngPitch = 15
+    }
+    else{
+        Pitch = Pitch
+        WheelAngPitch = 0
+    }
+    
+    if(Y & A){
+        Yaw += 0.5
+        WheelAngYaw = -15
+    }
+    elseif(Y & D){
+        Yaw -= 0.5
+        WheelAngYaw = 15
+    }
+    else{
+        Yaw = Yaw
+        WheelAngYaw = 0
+    }
+    
+    if(U & ThrottleUp){
+        CurrentThrottle += 0.01*(Driver:keyPressed("lshift")+1)
+        CurrentThrottle = clamp(CurrentThrottle, -10, 25.5)
+    }
+    elseif(U & ThrottleDown){
+        CurrentThrottle -= 0.01*(Driver:keyPressed("lshift")+1)
+        CurrentThrottle = clamp(CurrentThrottle, -10, 25.5)
+    }
+    else{
+        CurrentThrottle = clamp(CurrentThrottle, -10, 25.5)
+    }
+    
+    if(O & RLeft){
+        Roll -= 0.5
+        WheelAngRoll = 15
+    }
+    elseif(O & RRight){
+        Roll += 0.5
+        WheelAngRoll = -15
+    }
+    else{
+        Roll = Roll
+        WheelAngRoll = 0
+    }
+    
+    if(changed(Brakes) & Brakes){
+        CurrentThrottle = 0
+        Core:propSetVelocity(vec(0, 0, 0))
+    }
+    
+    if(changed(ResetRoll) & ResetRoll){
+        Roll = 0
+    }
+    
+    if(changed(F) & F){
+        LightOn = !LightOn
+        soundStop(2)
+        Seat:soundPlay(2, soundDuration("buttons/button17.wav"), "buttons/button17.wav"), soundPitch(2, 85)
+    }
+    
+    if(CurrentThrottle >= 1){
+        soundPitch(0, 0)
+        soundPitch(1, ThrusterPitch)
+    }
+    else{
+        soundPitch(0, 100)
+        soundPitch(1, 0)
+    }
+    
+    if(changed(Guns) & Guns){
+        GunToggle = !GunToggle
+        soundStop(3)
+        Seat:soundPlay(3, soundDuration("buttons/button5.wav"), "buttons/button5.wav"), soundPitch(3, 75)
+    }
+    
+    if(changed(Eject) & Eject){
+        Seat:ejectPod()
+    }
+    
+    Fire = Driver:keyPressed("space") * GunToggle 
+    Core:applyForce(-((Core:right()*Core:mass()*CurrentThrottle)*(Driver:keyPressed("lshift")+1)))
+}
+else{
+    Core:propGravity(1)
+    soundPitch(0, 0)
+    soundPitch(1, 0)
+    if(LightOn){
+        LightOn = !LightOn
+    }
+    Yaw = Core:angles():yaw()
+    Pitch = Core:angles():roll()
+    Roll = Core:angles():pitch()
+    CurrentThrottle = 0
+    if(GunToggle){
+        GunToggle = !GunToggle
+    }
+}
+}
+else{
+    Ang = ang(0, 90, 0)
+    On = 0
+    Core:propGravity(1)
+    soundPitch(0, 0)
+    soundPitch(1, 0)
+    if(LightOn){
+        LightOn = !LightOn
+    }
+    Yaw = Core:angles():yaw()
+    Pitch = Core:angles():roll()
+    Roll = Core:angles():pitch()
+    CurrentThrottle = 0
+    if(GunToggle){
+        GunToggle = !GunToggle
+    }
+    BallAng = -81
+}
+
+if(HyperdriveOn == 1){
+    ThrusterColor = vec(0, 0, 255)
+    ThrusterAlpha = 255*Active
+}
+else{
+    ThrusterColor = vec(255, 255, 255)
+    ThrusterAlpha = 130*Active
+}
+
+if(GunToggle){
+    PanelGunColor = vec(0, 0, 255)*Active
+}
+else{
+    PanelGunColor = vec(255, 0, 0)*Active
+}
+
+if(HyperdriveCanJump){
+    PanelHDColor = vec(0, 255, 255)*Active
+}
+else{
+    PanelHDColor = vec(255, 0, 0)*Active
+}
+
+rangerHitEntities(1)
+rangerFilter(array(Core, Gun1))
+rangerHitWater(0)
+GunAim1 = rangerOffset(999999, Gun1:massCenter(), Gun1:up())
+
+rangerHitEntities(1)
+rangerFilter(array(Core, Gun2))
+rangerHitWater(0)
+GunAim2 = rangerOffset(999999, Gun2:massCenter(), Gun2:up())
+
+EGP1:egp3DTracker(3, GunAim1:position())
+EGP1:egp3DTracker(4, GunAim2:position())
+
+EGP1:egpLine(5, vec2(2, 0)*StartFix, vec2(9, 0))
+EGP1:egpParent(5, 3)
+EGP1:egpColor(5, vec(127, 0, 255))
+EGP1:egpAlpha(5, 255*GunToggle)
+
+EGP1:egpLine(6, vec2(-2, 0)*StartFix, vec2(-9, 0))
+EGP1:egpParent(6, 3)
+EGP1:egpColor(6, vec(127, 0, 255))
+EGP1:egpAlpha(6, 255*GunToggle)
+
+EGP1:egpLine(7, vec2(0, 2)*StartFix, vec2(0, 9))
+EGP1:egpParent(7, 3)
+EGP1:egpColor(7, vec(127, 0, 255))
+EGP1:egpAlpha(7, 255*GunToggle)
+
+EGP1:egpLine(8, vec2(0, -2)*StartFix, vec2(0, -9))
+EGP1:egpParent(8, 3)
+EGP1:egpColor(8, vec(127, 0, 255))
+EGP1:egpAlpha(8, 255*GunToggle)
+
+
+EGP1:egpLine(9, vec2(2, 0)*StartFix, vec2(9, 0))
+EGP1:egpParent(9, 4)
+EGP1:egpColor(9, vec(127, 0, 255))
+EGP1:egpAlpha(9, 255*GunToggle)
+
+EGP1:egpLine(10, vec2(-2, 0)*StartFix, vec2(-9, 0))
+EGP1:egpParent(10, 4)
+EGP1:egpColor(10, vec(127, 0, 255))
+EGP1:egpAlpha(10, 255*GunToggle)
+
+EGP1:egpLine(11, vec2(0, 2)*StartFix, vec2(0, 9))
+EGP1:egpParent(11, 4)
+EGP1:egpColor(11, vec(127, 0, 255))
+EGP1:egpAlpha(11, 255*GunToggle)
+
+EGP1:egpLine(12, vec2(0, -2)*StartFix, vec2(0, -9))
+EGP1:egpParent(12, 4)
+EGP1:egpColor(12, vec(127, 0, 255))
+EGP1:egpAlpha(12, 255*GunToggle)
+
+if(changed(Driver) & Driver){
+    Seat:printDriver("Tap R to eject/exit")
+    Seat:printDriver("Hold Space to fire guns")
+    Seat:printDriver("Tap T to toggle guns")
+    #Seat:printDriver("Tap G to start hyperdrive")
+    Seat:printDriver("Tap F to toggle light")
+    Seat:printDriver("Tap V to reset roll")
+    Seat:printDriver("Tap V for brakes")
+    Seat:printDriver("Left/Right arrows for roll")
+    Seat:printDriver("A/D for yaw")
+    Seat:printDriver("W/S for pitch")
+    Seat:printDriver("LMB/RMB for throttle")
+}
